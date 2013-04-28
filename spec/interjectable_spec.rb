@@ -21,6 +21,13 @@ describe Interjectable do
         instance.instance_variable_get("@some_dependency").should_not be_nil
       end
 
+      it "allows transitive dependencies (via instance_eval)" do
+        klass.inject(:first_dependency) { second_dependency }
+        klass.inject(:second_dependency) { :value }
+
+        instance.first_dependency.should == :value
+      end
+
       context "with a dependency on another class" do
         before do
           defined?(SomeOtherClass).should be_false

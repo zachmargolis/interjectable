@@ -9,10 +9,10 @@ module Interjectable
     attr_writer dependency
 
     define_method(dependency) do
-      # @dependency ||= default_block.call
+      # @dependency ||= instance_eval(&default_block)
       ivar_name = "@#{dependency}"
       instance_variable_get(ivar_name) || begin
-        instance_variable_set(ivar_name, default_block.call)
+        instance_variable_set(ivar_name, instance_eval(&default_block))
       end
     end
   end
