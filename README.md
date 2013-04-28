@@ -1,7 +1,6 @@
 # Injectable
 
-Injectable is a really simple Ruby library for dependency injection.
-The goal is to create a small interface for delegating to other objects, and grant the ability to unit test things independently.
+Injectable is a really simple Ruby library for dependency injection, designed to make unit testing easier.
 
 ## Installation
 

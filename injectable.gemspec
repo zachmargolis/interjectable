@@ -8,8 +8,8 @@ Gem::Specification.new do |spec|
   spec.version       = Injectable::VERSION
   spec.authors       = ["Zach Margolis"]
   spec.email         = ["zbmargolis@gmail.com"]
-  spec.description   = %q{A simple dependency injection library}
-  spec.summary       = %q{A simple dependency injection library}
+  spec.description   = %q{A simple dependency injection library for unit testing}
+  spec.summary       = %q{A simple dependency injection library for unit testing}
   spec.homepage      = "https://github.com/zachmargolis/injectable"
   spec.license       = "MIT"
 
