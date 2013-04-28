@@ -1,6 +1,6 @@
-# Injectable
+# Interjectable
 
-Injectable is a really simple Ruby library for dependency injection, designed to make unit testing easier.
+Interjectable is a really simple Ruby library for dependency injection, designed to make unit testing easier.
 
 ## Installation
 
@@ -12,11 +12,11 @@ gem 'injectable'
 
 ## Usage
 
-Injectable has one module (`Injectable`) and one method (`inject`). Use it like so!
+Interjectable has one module (`Interjectable`) and one method (`inject`). Use it like so!
 
 ```ruby
 class MyClass
-  extend Injectable
+  extend Interjectable
 
   inject(:dependency) { SomeOtherClass.new }
   inject(:other_dependency) { AnotherClass.new }
@@ -53,7 +53,7 @@ Let's check it out: we can build a class A that normally references B, but in ou
 ```ruby
 # a.rb
 class A
-  extend Injectable
+  extend Interjectable
 
   inject(:b) { B.new }
 
@@ -80,6 +80,6 @@ end
 
 > Great, why this library over any other?
 
-Injectable aims to provide clear defaults for easy debugging.
+Interjectable aims to provide clear defaults for easy debugging.
 
 The other libraries we found used inject/provide setups. That setup is nice because files don't reference each other. However, this can become a headache to debug to actually figure out what is being used where. In our use cases, we use dependency injection for simplified testing, not for hands-free configuration.

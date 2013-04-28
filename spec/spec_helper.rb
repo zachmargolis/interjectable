@@ -1,7 +1,7 @@
 require 'rspec'
 
 $LOAD_PATH.unshift(
-  File.join(File.dirname(__FILE__), '..', 'lib', 'injectable')
+  File.join(File.dirname(__FILE__), '..', 'lib', 'interjectable')
 )
 
-require 'injectable'
+require 'interjectable'

@@ -1,8 +1,8 @@
 require 'spec_helper'
 
-describe Injectable do
+describe Interjectable do
   context "when extended" do
-    let(:klass) { Class.new { extend Injectable } }
+    let(:klass) { Class.new { extend Interjectable } }
     let(:instance) { klass.new }
 
     describe "#inject" do

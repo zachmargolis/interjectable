@@ -1,16 +1,16 @@
 # coding: utf-8
 lib = File.expand_path('../lib', __FILE__)
 $LOAD_PATH.unshift(lib) unless $LOAD_PATH.include?(lib)
-require 'injectable/version'
+require 'interjectable/version'
 
 Gem::Specification.new do |spec|
-  spec.name          = "injectable"
-  spec.version       = Injectable::VERSION
+  spec.name          = "interjectable"
+  spec.version       = Interjectable::VERSION
   spec.authors       = ["Zach Margolis"]
   spec.email         = ["zbmargolis@gmail.com"]
   spec.description   = %q{A simple dependency injection library for unit testing}
   spec.summary       = %q{A simple dependency injection library for unit testing}
-  spec.homepage      = "https://github.com/zachmargolis/injectable"
+  spec.homepage      = "https://github.com/zachmargolis/interjectable"
   spec.license       = "MIT"
 
   spec.files         = `git ls-files`.split($/)

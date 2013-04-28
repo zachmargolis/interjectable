@@ -1,6 +1,6 @@
-require "injectable/version"
+require "interjectable/version"
 
-module Injectable
+module Interjectable
   def self.extended(mod)
     super
   end
