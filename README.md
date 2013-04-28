@@ -13,7 +13,7 @@ gem 'injectable'
 
 ## Usage
 
-Injectable has one module (`Injectable`) and one method, `inject`. Use it like so!
+Injectable has one module (`Injectable`) and one method (`inject`). Use it like so!
 
 ```ruby
 class MyClass
@@ -33,5 +33,6 @@ class MyClass
   def initialize(dependency=SomeOtherClass.new)
     @dependency=dependency
   end
+end
 ```
 
