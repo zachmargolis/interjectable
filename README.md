@@ -7,7 +7,7 @@ Interjectable is a really simple Ruby library for dependency injection, designed
 It's a gem!
 
 ```ruby
-gem 'injectable'
+gem 'interjectable'
 ```
 
 ## Usage
