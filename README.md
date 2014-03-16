@@ -12,14 +12,19 @@ gem 'interjectable'
 
 ## Usage
 
-Interjectable has one module (`Interjectable`) and one method (`inject`). Use it like so!
+Interjectable has one module (`Interjectable`) and two methods. Use them like so!
 
 ```ruby
 class MyClass
   extend Interjectable
 
+  # defines helper methods on instances that memoize values per instance
   inject(:dependency) { SomeOtherClass.new }
   inject(:other_dependency) { AnotherClass.new }
+
+  # defines helper methods on instances that memoize values statically,
+  # shared across all instances
+  inject_static(:shared_value) { ENV["SOME_VALUE"] }
 end
 ```
 

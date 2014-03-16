@@ -18,4 +18,20 @@ module Interjectable
       end
     end
   end
+
+  def inject_static(dependency, &default_block)
+    cvar_name = "@@#{dependency}"
+
+    define_method("#{dependency}=") do |value|
+      self.class.class_variable_set(cvar_name, value)
+    end
+
+    define_method(dependency) do
+      if self.class.class_variable_defined?(cvar_name)
+        self.class.class_variable_get(cvar_name)
+      else
+        self.class.class_variable_set(cvar_name, instance_eval(&default_block))
+      end
+    end
+  end
 end
