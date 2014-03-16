@@ -50,5 +50,43 @@ describe Interjectable do
         end
       end
     end
+
+    describe "#inject_static" do
+      let(:other_instance) { klass.new }
+
+      before do
+        klass.inject_static(:static_dependency) { :some_value }
+      end
+
+      it "adds an instance method and setter" do
+        instance.static_dependency = 'aaa'
+        instance.static_dependency.should == 'aaa'
+      end
+
+      it "shares a value across all instances of a class" do
+        instance.static_dependency = 'bbb'
+        other_instance.static_dependency.should == 'bbb'
+      end
+
+      it "calls its dependency block once across all instances" do
+        count = 0;
+        klass.inject_static(:falsy_static_dependency) { count += 1; nil }
+
+        instance.falsy_static_dependency.should be_nil
+        other_instance.falsy_static_dependency.should be_nil
+
+        count.should == 1
+      end
+
+      context "with a subclas" do
+        let(:subclass) { Class.new(klass) }
+        let(:subclass_instance) { subclass.new }
+
+        it "shares its values with its superclass" do
+          instance.static_dependency = 'ccc'
+          subclass_instance.static_dependency.should == 'ccc'
+        end
+      end
+    end
   end
 end
