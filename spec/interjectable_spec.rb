@@ -28,6 +28,14 @@ describe Interjectable do
         instance.first_dependency.should == :value
       end
 
+      it "calls dependency block once, even with a falsy value" do
+        klass.inject(:some_falsy_dependency) { @count += 1; nil }
+
+        instance.instance_variable_set("@count", 0)
+        2.times { instance.some_falsy_dependency.should be_nil }
+        instance.instance_variable_get("@count").should == 1
+      end
+
       context "with a dependency on another class" do
         before do
           defined?(SomeOtherClass).should be_false

@@ -11,7 +11,9 @@ module Interjectable
     define_method(dependency) do
       # @dependency ||= instance_eval(&default_block)
       ivar_name = "@#{dependency}"
-      instance_variable_get(ivar_name) || begin
+      if instance_variable_defined?(ivar_name)
+        instance_variable_get(ivar_name)
+      else
         instance_variable_set(ivar_name, instance_eval(&default_block))
       end
     end
