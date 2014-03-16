@@ -5,11 +5,18 @@ module Interjectable
     super
   end
 
+  # Defines a helper methods on instances that memoize values per-instance.
+  # Similar to writing
+  #
+  #   attr_writer :dependency
+  #
+  #   def dependency
+  #     @dependency ||= instance_eval(&default_block)
+  #   end
   def inject(dependency, &default_block)
     attr_writer dependency
 
     define_method(dependency) do
-      # @dependency ||= instance_eval(&default_block)
       ivar_name = "@#{dependency}"
       if instance_variable_defined?(ivar_name)
         instance_variable_get(ivar_name)
@@ -19,6 +26,15 @@ module Interjectable
     end
   end
 
+  # Defines helper methods on instances that memoize values per-class.
+  # (shared across all instances of a class, including instances of subclasses)
+  # Similar to writing
+  #
+  #   cattr_writer :dependency
+  #
+  #   def dependency
+  #     @@dependency ||= instance_eval(&default_block)
+  #   end
   def inject_static(dependency, &default_block)
     cvar_name = "@@#{dependency}"
 
