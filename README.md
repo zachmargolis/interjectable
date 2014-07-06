@@ -77,7 +77,7 @@ describe A do
     end
 
     it "parses from its b" do
-      subject.read.should == 'result'
+      expect(subject.read).to eq('result')
     end
   end
 end
