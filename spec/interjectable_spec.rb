@@ -11,33 +11,33 @@ describe Interjectable do
 
       it "adds an instance method getter and setter" do
         instance.some_dependency = 'aaa'
-        instance.some_dependency.should == 'aaa' 
+        expect(instance.some_dependency).to eq('aaa')
       end
 
       it "lazy-loads the default block" do
-        instance.instance_variable_get("@some_dependency").should be_nil
-        instance.some_dependency.should == :service
-        instance.instance_variable_get("@some_dependency").should_not be_nil
+        expect(instance.instance_variable_get("@some_dependency")).to be_nil
+        expect(instance.some_dependency).to eq(:service)
+        expect(instance.instance_variable_get("@some_dependency")).not_to be_nil
       end
 
       it "allows transitive dependencies (via instance_eval)" do
         klass.inject(:first_dependency) { second_dependency }
         klass.inject(:second_dependency) { :value }
 
-        instance.first_dependency.should == :value
+        expect(instance.first_dependency).to eq(:value)
       end
 
       it "calls dependency block once, even with a falsy value" do
         count = 0;
         klass.inject(:some_falsy_dependency) { count += 1; nil }
 
-        2.times { instance.some_falsy_dependency.should be_nil }
-        count.should == 1
+        2.times { expect(instance.some_falsy_dependency).to be_nil }
+        expect(count).to eq(1)
       end
 
       context "with a dependency on another class" do
         before do
-          defined?(SomeOtherClass).should be_false
+          expect(defined?(SomeOtherClass)).to be_falsey
 
           klass.inject(:some_other_class) { SomeOtherClass.new }
         end
@@ -45,7 +45,7 @@ describe Interjectable do
         it "does not need to load that class (can be stubbed away)" do
           instance.some_other_class = :fake_other_class
 
-          instance.some_other_class.should == :fake_other_class
+          expect(instance.some_other_class).to eq(:fake_other_class)
         end
       end
     end
@@ -59,22 +59,22 @@ describe Interjectable do
 
       it "adds an instance method and setter" do
         instance.static_dependency = 'aaa'
-        instance.static_dependency.should == 'aaa'
+        expect(instance.static_dependency).to eq('aaa')
       end
 
       it "shares a value across all instances of a class" do
         instance.static_dependency = 'bbb'
-        other_instance.static_dependency.should == 'bbb'
+        expect(other_instance.static_dependency).to eq('bbb')
       end
 
       it "calls its dependency block once across all instances" do
         count = 0;
         klass.inject_static(:falsy_static_dependency) { count += 1; nil }
 
-        instance.falsy_static_dependency.should be_nil
-        other_instance.falsy_static_dependency.should be_nil
+        expect(instance.falsy_static_dependency).to be_nil
+        expect(other_instance.falsy_static_dependency).to be_nil
 
-        count.should == 1
+        expect(count).to eq(1)
       end
 
       context "with a subclas" do
@@ -83,7 +83,7 @@ describe Interjectable do
 
         it "shares its values with its superclass" do
           instance.static_dependency = 'ccc'
-          subclass_instance.static_dependency.should == 'ccc'
+          expect(subclass_instance.static_dependency).to eq('ccc')
         end
       end
     end
