@@ -1,8 +1,8 @@
 require "interjectable/version"
 
 module Interjectable
-  def self.extended(mod)
-    super
+  def self.included(mod)
+    mod.send(:extend, self)
   end
 
   # Defines a helper methods on instances that memoize values per-instance.
