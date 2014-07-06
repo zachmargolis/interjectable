@@ -1,8 +1,7 @@
 require 'spec_helper'
 
 describe Interjectable do
-  context "when extended" do
-    let(:klass) { Class.new { extend Interjectable } }
+  shared_examples_for "an interjectable class" do
     let(:instance) { klass.new }
 
     describe "#inject" do
@@ -88,5 +87,17 @@ describe Interjectable do
         end
       end
     end
+  end
+
+  context "when extended" do
+    let(:klass) { Class.new { extend Interjectable } }
+
+    it_should_behave_like "an interjectable class"
+  end
+
+  context "when included" do
+    let(:klass) { Class.new { extend Interjectable } }
+
+    it_should_behave_like "an interjectable class"
   end
 end

@@ -16,7 +16,7 @@ Interjectable has one module (`Interjectable`) and two methods. Use them like so
 
 ```ruby
 class MyClass
-  extend Interjectable
+  include Interjectable
 
   # defines helper methods on instances that memoize values per instance
   inject(:dependency) { SomeOtherClass.new }
