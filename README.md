@@ -58,7 +58,7 @@ Let's check it out: we can build a class A that normally references B, but in ou
 ```ruby
 # a.rb
 class A
-  extend Interjectable
+  include Interjectable
 
   inject(:b) { B.new }
 
