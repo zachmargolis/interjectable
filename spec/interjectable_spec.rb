@@ -9,6 +9,10 @@ describe Interjectable do
         klass.inject(:some_dependency) { :service }
       end
 
+      it "doesn't have #inject as an instance method" do
+        expect { instance.inject(:some_dependency) { :service } }.to raise_error(NameError)
+      end
+
       it "adds an instance method getter and setter" do
         instance.some_dependency = 'aaa'
         expect(instance.some_dependency).to eq('aaa')
@@ -57,6 +61,10 @@ describe Interjectable do
         klass.inject_static(:static_dependency) { :some_value }
       end
 
+      it "doesn't have #inject_static as an instance method" do
+        expect { instance.inject_static(:static_dependency) { :some_value } }.to raise_error(NameError)
+      end
+
       it "adds an instance method and setter" do
         instance.static_dependency = 'aaa'
         expect(instance.static_dependency).to eq('aaa')
@@ -75,6 +83,13 @@ describe Interjectable do
         expect(other_instance.falsy_static_dependency).to be_nil
 
         expect(count).to eq(1)
+      end
+
+      it "clears class variable on subsequent calls to inject_static" do
+        expect(instance.static_dependency).to eq(:some_value)
+        klass.inject_static(:static_dependency) { :another_value }
+        expect(instance.static_dependency).to eq(:another_value)
+        expect(other_instance.static_dependency).to eq(:another_value)
       end
 
       context "with a subclas" do
@@ -96,7 +111,7 @@ describe Interjectable do
   end
 
   context "when included" do
-    let(:klass) { Class.new { extend Interjectable } }
+    let(:klass) { Class.new { include Interjectable } }
 
     it_should_behave_like "an interjectable class"
   end

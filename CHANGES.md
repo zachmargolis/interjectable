@@ -1,5 +1,10 @@
 # Change Log
 
+# v0.3.0
+
+- Clear previously set class variables an subsequent calls to `#inject_static`
+- Don't include `#inject` and `#inject_static` as instance variables on `include Interjectable`
+
 # v0.2.0
 
 Small feature.
