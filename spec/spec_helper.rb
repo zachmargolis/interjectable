@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 require 'rspec'
 
 $LOAD_PATH.unshift(
@@ -5,3 +7,4 @@ $LOAD_PATH.unshift(
 )
 
 require 'interjectable'
+require 'interjectable/rspec'

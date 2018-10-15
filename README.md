@@ -61,24 +61,41 @@ class A
   include Interjectable
 
   inject(:b) { B.new }
+  inject_static(:c) { C.new }
 
   def read
     b.parse
   end
+
+  def foo
+    c.boom
+  end
 end
 
 # a_spec.rb
-require 'a'
+require "a"
+require "interjectable/rspec"
 
 describe A do
   describe "#read" do
     before do
-      a.b = double("FakeB", parse: 'result')
+      instance_double(B, parse: "result").tap do |fake_b|
+        a.test_inject(:b) { fake_b }
+      end
+      instance_double(C, boom: "goat").tap do |fake_c|
+        a.test_inject(:c) { fake_c }
+      end
     end
 
-    it "parses from its b" do
-      expect(subject.read).to eq('result')
+    it "parses from its b, and foos from its c" do
+      expect(subject.read).to eq("result")
+      expect(subject.foo).to eq("goat")
     end
+  end
+
+  it "doesn't pollute other tests" do
+    expect(subject.read).to eq(B.new.parse)
+    expect(subject.foo).to eq(C.new.boom)
   end
 end
 ```

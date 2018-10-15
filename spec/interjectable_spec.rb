@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 require 'spec_helper'
 
 describe Interjectable do
@@ -39,6 +41,27 @@ describe Interjectable do
         expect(count).to eq(1)
       end
 
+      it "errors when injecting the same dependency multiple times" do
+        expect { klass.inject(:some_dependency) { :some_other_value } }
+          .to raise_error(Interjectable::MethodAlreadyDefined)
+      end
+
+      it "errors when there is an instance method with the same name already defined" do
+        klass.class_eval do
+          define_method(:duplicate_dependency) { :the_method }
+        end
+        expect(instance.duplicate_dependency).to eq(:the_method)
+        expect { klass.inject(:duplicate_dependency) { :some_other_value } }
+          .to raise_error(Interjectable::MethodAlreadyDefined)
+      end
+
+      it "allows you to inject a non static default" do
+        klass.module_eval { attr_accessor :foo }
+        klass.inject(:good_dependency) { foo }
+        instance.foo = 2
+        expect(instance.good_dependency).to eq(2)
+      end
+
       context "with a dependency on another class" do
         before do
           expect(defined?(SomeOtherClass)).to be_falsey
@@ -50,6 +73,16 @@ describe Interjectable do
           instance.some_other_class = :fake_other_class
 
           expect(instance.some_other_class).to eq(:fake_other_class)
+        end
+      end
+
+      context "with a subclass" do
+        let(:subclass) { Class.new(klass) }
+        let(:subclass_instance) { subclass.new }
+
+        it "does not error if the method exists on the superclass" do
+          subclass.inject(:dependency) { :some_other_value }
+          expect(subclass_instance.dependency).to eq(:some_other_value)
         end
       end
     end
@@ -70,9 +103,15 @@ describe Interjectable do
         expect(instance.static_dependency).to eq('aaa')
       end
 
+      it "adds a class method and setter" do
+        klass.static_dependency = 'aaa'
+        expect(klass.static_dependency).to eq('aaa')
+      end
+
       it "shares a value across all instances of a class" do
         instance.static_dependency = 'bbb'
         expect(other_instance.static_dependency).to eq('bbb')
+        expect(klass.static_dependency).to eq('bbb')
       end
 
       it "calls its dependency block once across all instances" do
@@ -81,24 +120,55 @@ describe Interjectable do
 
         expect(instance.falsy_static_dependency).to be_nil
         expect(other_instance.falsy_static_dependency).to be_nil
+        expect(klass.falsy_static_dependency).to be_nil
 
         expect(count).to eq(1)
       end
 
-      it "clears class variable on subsequent calls to inject_static" do
-        expect(instance.static_dependency).to eq(:some_value)
-        klass.inject_static(:static_dependency) { :another_value }
-        expect(instance.static_dependency).to eq(:another_value)
-        expect(other_instance.static_dependency).to eq(:another_value)
+      it "errors when inject_static-ing a dependency multiple times" do
+        expect { klass.inject_static(:static_dependency) { :some_other_value } }
+          .to raise_error(Interjectable::MethodAlreadyDefined)
       end
 
-      context "with a subclas" do
+      it "errors when there is an instance method with the same name already defined" do
+        klass.class_eval do
+          define_method(:duplicate_static_dependency) { :the_method }
+        end
+        expect(instance.duplicate_static_dependency).to eq(:the_method)
+        expect { klass.inject_static(:duplicate_static_dependency) { :some_other_value } }
+          .to raise_error(Interjectable::MethodAlreadyDefined)
+      end
+
+      it "errors when there is a class method with the same name already defined" do
+        klass.class_eval do
+          define_singleton_method(:duplicate_static_dependency) { :the_method }
+        end
+        expect(klass.duplicate_static_dependency).to eq(:the_method)
+        expect { klass.inject_static(:duplicate_static_dependency) { :some_other_value } }
+          .to raise_error(Interjectable::MethodAlreadyDefined)
+      end
+
+      it "errors if you inject a non static default" do
+        klass.module_eval { attr_accessor :foo }
+        klass.inject_static(:bad_dependency) { foo }
+        expect { instance.bad_dependency }.to raise_error(NameError)
+        expect { klass.bad_dependency }.to raise_error(NameError)
+      end
+
+      context "with a subclass" do
         let(:subclass) { Class.new(klass) }
         let(:subclass_instance) { subclass.new }
 
         it "shares its values with its superclass" do
           instance.static_dependency = 'ccc'
           expect(subclass_instance.static_dependency).to eq('ccc')
+          expect(subclass.static_dependency).to eq('ccc')
+        end
+
+        it "does not error if the method exists on the super klass" do
+          subclass.inject_static(:static_dependency) { :some_other_value }
+          expect(subclass_instance.static_dependency).to eq(:some_other_value)
+          expect(subclass.static_dependency).to eq(:some_other_value)
         end
       end
     end
