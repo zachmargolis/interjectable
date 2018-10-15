@@ -1,6 +1,10 @@
+# frozen_string_literal: true
+
 require "interjectable/version"
 
 module Interjectable
+  MethodAlreadyDefined = Class.new(StandardError)
+
   def self.included(mod)
     mod.send(:extend, ClassMethods)
   end
@@ -11,6 +15,11 @@ module Interjectable
 
   module ClassMethods
     # Defines a helper methods on instances that memoize values per-instance.
+    #
+    # Calling a second time is an error. Use `#test_inject` for overriding in
+    # RSpec tests. You need to `require "interjectable/rspec"` to use
+    # `#test_inject`. See the README.md.
+    #
     # Similar to writing
     #
     #   attr_writer :dependency
@@ -19,10 +28,14 @@ module Interjectable
     #     @dependency ||= instance_eval(&default_block)
     #   end
     def inject(dependency, &default_block)
+      if instance_methods(false).include?(dependency)
+        raise MethodAlreadyDefined, "#{dependency} is already defined"
+      end
+
       attr_writer dependency
 
       define_method(dependency) do
-        ivar_name = "@#{dependency}"
+        ivar_name = :"@#{dependency}"
         if instance_variable_defined?(ivar_name)
           instance_variable_get(ivar_name)
         else
@@ -32,10 +45,12 @@ module Interjectable
     end
 
     # Defines helper methods on instances that memoize values per-class.
-    # (shared across all instances of a class, including instances of subclasses).
+    # (shared across all instances of a class, including instances of
+    # subclasses).
     #
-    # Calling a second time clears the value (if set) from previous times. This should
-    # probably only be called a second time in tests.
+    # Calling a second time is an error. Use `#test_inject` for overriding in
+    # RSpec tests. You need to `require "interjectable/rspec"` to use
+    # `#test_inject`. See the README.md.
     #
     # Similar to writing
     #
@@ -45,18 +60,30 @@ module Interjectable
     #     @@dependency ||= instance_eval(&default_block)
     #   end
     def inject_static(dependency, &default_block)
-      cvar_name = "@@#{dependency}"
-      remove_class_variable(cvar_name) if class_variable_defined?(cvar_name)
+      if instance_methods(false).include?(dependency) || methods(false).include?(dependency)
+        raise MethodAlreadyDefined, "#{dependency} is already defined"
+      end
 
-      define_method("#{dependency}=") do |value|
-        self.class.class_variable_set(cvar_name, value)
+      cvar_name = :"@@#{dependency}"
+      setter = :"#{dependency}="
+
+      define_method(setter) do |value|
+        self.class.send(setter, value)
+      end
+
+      define_singleton_method(setter) do |value|
+        class_variable_set(cvar_name, value)
       end
 
       define_method(dependency) do
-        if self.class.class_variable_defined?(cvar_name)
-          self.class.class_variable_get(cvar_name)
+        self.class.send(dependency)
+      end
+
+      define_singleton_method(dependency) do
+        if class_variable_defined?(cvar_name)
+          class_variable_get(cvar_name)
         else
-          self.class.class_variable_set(cvar_name, instance_eval(&default_block))
+          class_variable_set(cvar_name, instance_eval(&default_block))
         end
       end
     end
