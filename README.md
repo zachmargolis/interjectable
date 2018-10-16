@@ -79,12 +79,12 @@ require "interjectable/rspec"
 describe A do
   describe "#read" do
     before do
-      instance_double(B, parse: "result").tap do |fake_b|
-        a.test_inject(:b) { fake_b }
-      end
-      instance_double(C, boom: "goat").tap do |fake_c|
-        a.test_inject(:c) { fake_c }
-      end
+      # You can use the block form of #test_inject to inject a fake object that references methods on a.
+      a.test_inject(:b) { FakeB.new(foo) }
+
+      # You can use the test_inject RSpec helper if you just want to inject an object that doesn't
+      # need to reference anything on a.
+      test_inject(described_class, :c, instance_double(C, boom: "goat"))
     end
 
     it "parses from its b, and foos from its c" do
@@ -93,6 +93,9 @@ describe A do
     end
   end
 
+  # Both Interjectable.test_inject and the RSpec test_inject helper will setup
+  # RSpec after hooks to cleanup any test_inject-ed dependencies after the
+  # context they are defined in.
   it "doesn't pollute other tests" do
     expect(subject.read).to eq(B.new.parse)
     expect(subject.foo).to eq(C.new.boom)
