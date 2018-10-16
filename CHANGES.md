@@ -1,5 +1,11 @@
 # Change Log
 
+# v1.0.0
+
+- Calling `#inject` or `#inject_static` multiple times is now an error. Use
+  `#test_inject` instead.
+- Add `#test_inject` rspec helper. See the [README.md](README.md) for usage.
+
 # v0.3.0
 
 - Clear previously set class variables an subsequent calls to `#inject_static`
