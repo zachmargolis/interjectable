@@ -1,5 +1,11 @@
 # Change Log
 
+# v1.1.0
+
+- Add another RSpec helper `test_inject` to avoid needing a local variable for
+  the setter block to reference. Again, see the [README.md](README.md) for
+  usage.
+
 # v1.0.0
 
 - Calling `#inject` or `#inject_static` multiple times is now an error. Use

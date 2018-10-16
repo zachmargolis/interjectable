@@ -50,7 +50,7 @@ describe "RSpec test helper #test_inject" do
     end
 
     before do
-      Klass.test_inject(:dependency) { :another_unused_dependency }
+      test_inject(Klass, :dependency, :another_unused_dependency)
       Klass.test_inject(:dependency) { foo }
       Klass.test_inject(:static_dependency) { :overriden_static_dependency }
     end
@@ -75,7 +75,7 @@ describe "RSpec test helper #test_inject" do
     context "override dependency" do
       before(:all) do
         Klass.test_inject(:dependency) { :yet_another_unused_dependency }
-        Klass.test_inject(:static_dependency) { :unused_static_dependency }
+        test_inject(Klass, :static_dependency, :unused_static_dependency)
       end
 
       before do
@@ -143,7 +143,8 @@ describe "RSpec test helper #test_inject" do
   context "isoloated context: subclass before :all" do
     before(:all) do
       SubKlass.test_inject(:static_dependency) { :bar }
-      SubKlass.test_inject(:static_dependency) { :baz }
+      SubKlass.test_inject(:static_dependency) { :zoo }
+      test_inject(SubKlass, :static_dependency, :baz)
     end
 
     it "sets the static_dependency" do
@@ -152,7 +153,7 @@ describe "RSpec test helper #test_inject" do
 
     context "subcontext" do
       before(:all) do
-        SubKlass.test_inject(:static_dependency) { :goat }
+        test_inject(SubKlass, :static_dependency, :goat)
       end
 
       it "sets the static_dependency" do
