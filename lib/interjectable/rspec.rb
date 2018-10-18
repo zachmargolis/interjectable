@@ -138,5 +138,5 @@ if defined?(RSpec)
     c.include(Interjectable::RSpecHelper)
   end
 else
-  raise "RSpec helper was required but RSpec has not beed defined"
+  raise "RSpec helper was required but RSpec has not been defined"
 end

@@ -1,5 +1,9 @@
 # Change Log
 
+# v1.1.1
+
+- Fix typo in RSpec helper loading error message
+
 # v1.1.0
 
 - Add another RSpec helper `test_inject` to avoid needing a local variable for
