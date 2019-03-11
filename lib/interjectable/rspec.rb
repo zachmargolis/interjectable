@@ -40,7 +40,7 @@ module Interjectable
     class SuperclassInject < Struct.new(:klass, :dependency)
       def override(value, &setter)
         ivar = "@#{dependency}"
-        klass.define_method(dependency) do
+        klass.send(:define_method, dependency) do
           if instance_variable_defined?(ivar)
             instance_variable_get(ivar)
           else
@@ -61,7 +61,7 @@ module Interjectable
       end
 
       def restore
-        klass.define_method(dependency, @meth)
+        klass.send(:define_method, dependency, @meth)
       end
     end
 
