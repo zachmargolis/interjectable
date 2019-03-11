@@ -1,5 +1,9 @@
 # Change Log
 
+# v1.1.2
+
+- Fix visibility issue with `Module.define_method` for Ruby < 2.5.0.
+
 # v1.1.1
 
 - Fix typo in RSpec helper loading error message
