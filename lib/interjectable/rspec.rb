@@ -4,40 +4,40 @@ module Interjectable
   module ClassMethods
     BLANK = Object.new
 
-    class SuperclassInjectStatic < Struct.new(:klass, :dependency)
+    SuperclassInjectStatic = Struct.new(:klass, :dependency) do
       def override(value, &setter)
-        cvar = "@@#{dependency}"
-        klass.remove_class_variable(cvar) if klass.class_variable_defined?(cvar)
+        var = ::Interjectable::ClassMethods::BLANK
         klass.define_singleton_method(dependency) do
-          if class_variable_defined?(cvar)
-            class_variable_get(cvar)
-          else
-            class_variable_set(cvar, value != ::Interjectable::ClassMethods::BLANK ? value : instance_eval(&setter))
-          end
+          return var if var != ::Interjectable::ClassMethods::BLANK
+
+          var = value != ::Interjectable::ClassMethods::BLANK ? value : instance_eval(&setter)
+        end
+
+        klass.define_singleton_method("#{dependency}=") do |new_value|
+          var = new_value
         end
       end
 
       def restore
-        cvar = "@@#{dependency}"
-        klass.remove_class_variable(cvar) if klass.class_variable_defined?(cvar)
         klass.singleton_class.remove_method(dependency)
+        klass.singleton_class.remove_method("#{dependency}=")
       end
     end
 
     class InjectStatic < SuperclassInjectStatic
       def override(*)
-        @meth = klass.singleton_method(dependency)
+        @getter = klass.singleton_method(dependency)
+        @setter = klass.singleton_method("#{dependency}=")
         super
       end
 
       def restore
-        cvar = "@@#{dependency}"
-        klass.remove_class_variable(cvar) if klass.class_variable_defined?(cvar)
-        klass.define_singleton_method(dependency, @meth)
+        klass.define_singleton_method(dependency, @getter)
+        klass.define_singleton_method("#{dependency}=", @setter)
       end
     end
 
-    class SuperclassInject < Struct.new(:klass, :dependency)
+    SuperclassInject = Struct.new(:klass, :dependency) do
       def override(value, &setter)
         ivar = "@#{dependency}"
         klass.send(:define_method, dependency) do
@@ -56,12 +56,12 @@ module Interjectable
 
     class Inject < SuperclassInject
       def override(*)
-        @meth = klass.instance_method(dependency)
+        @getter = klass.instance_method(dependency)
         super
       end
 
       def restore
-        klass.send(:define_method, dependency, @meth)
+        klass.send(:define_method, dependency, @getter)
       end
     end
 
@@ -86,18 +86,18 @@ module Interjectable
         raise "#test_inject can only be called from an RSpec ExampleGroup (e.g.: it, before, after)"
       end
 
-      injector = if target.singleton_methods(false).include?(dependency) # inject_static(dependency) on this class
-        InjectStatic.new(target, dependency)
-      elsif target.singleton_methods.include?(dependency) # inject_static(dependency) on a superclass of this class
-        SuperclassInjectStatic.new(target, dependency)
-      elsif target.instance_methods(false).include?(dependency) # inject(dependency) on this class
-        Inject.new(target, dependency)
-      elsif target.instance_methods.include?(dependency) # inject(dependency) on a superclass of this class
-        SuperclassInject.new(target, dependency)
-      else
-        raise ArgumentError, "tried to override a non-existent dependency: #{dependency.inspect}"
-      end
-
+      injector =
+        if target.singleton_methods(false).include?(dependency) # inject_static(dependency) on this class
+          InjectStatic.new(target, dependency)
+        elsif target.singleton_methods.include?(dependency) # inject_static(dependency) on a superclass of this class
+          SuperclassInjectStatic.new(target, dependency)
+        elsif target.instance_methods(false).include?(dependency) # inject(dependency) on this class
+          Inject.new(target, dependency)
+        elsif target.instance_methods.include?(dependency) # inject(dependency) on a superclass of this class
+          SuperclassInject.new(target, dependency)
+        else
+          raise ArgumentError, "tried to override a non-existent dependency: #{dependency.inspect}"
+        end
 
       injector.override(value, &setter)
 
@@ -114,6 +114,7 @@ module Interjectable
       # for the same #test_inject call since those before hooks only run once,
       # and therefore only setup a single after hook.
       return if scope == :each && RESTORE_HOOKS[key].any? { |group| rspec_example_group <= group }
+
       RESTORE_HOOKS[key] << rspec_example_group
 
       rspec_example_group.after(scope) do

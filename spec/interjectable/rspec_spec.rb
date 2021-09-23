@@ -2,18 +2,29 @@
 
 require 'spec_helper'
 
+class Klass
+  extend Interjectable
+  inject(:dependency) { :dependency }
+  inject_static(:static_dependency) { :static_dependency }
+
+  define_method(:foo) { :foo }
+end
+SubKlass = Class.new(Klass)
+SubSubKlass = Class.new(SubKlass)
+
 describe "RSpec test helper #test_inject" do
-  class Klass
-    extend Interjectable
-    inject(:dependency) { :dependency }
-    inject_static(:static_dependency) { :static_dependency }
-
-    define_method(:foo) { :foo }
-  end
-  SubKlass = Class.new(Klass)
-
   let(:instance) { Klass.new }
   let(:subklass_instance) { SubKlass.new }
+
+  before(:all) do
+    Klass.static_dependency = :boom
+    SubKlass.static_dependency = :boom1
+    SubSubKlass.static_dependency = :boom2
+    expect(Klass.static_dependency).to eq(:boom2)
+    expect(SubKlass.static_dependency).to eq(:boom2)
+    expect(SubSubKlass.static_dependency).to eq(:boom2)
+    Klass.static_dependency = :static_dependency
+  end
 
   after(:all) do
     # Sanity check after running the tests, verify #test_inject cleans up after itself
@@ -25,12 +36,16 @@ describe "RSpec test helper #test_inject" do
     expect(subklass_instance.dependency).to eq(:dependency)
     expect(subklass_instance.static_dependency).to eq(:static_dependency)
     expect(SubKlass.static_dependency).to eq(:static_dependency)
-
-    # Don't leak our test classes
-    Object.instance_eval do
-      remove_const(:SubKlass)
-      remove_const(:Klass)
-    end
+    subsubklass_instance = SubSubKlass.new
+    expect(subsubklass_instance.dependency).to eq(:dependency)
+    expect(subsubklass_instance.static_dependency).to eq(:static_dependency)
+    expect(SubSubKlass.static_dependency).to eq(:static_dependency)
+    Klass.static_dependency = :boom
+    SubKlass.static_dependency = :boom1
+    SubSubKlass.static_dependency = :boom2
+    expect(Klass.static_dependency).to eq(:boom2)
+    expect(SubKlass.static_dependency).to eq(:boom2)
+    expect(SubSubKlass.static_dependency).to eq(:boom2)
   end
 
   context "isoloated context" do
@@ -64,6 +79,15 @@ describe "RSpec test helper #test_inject" do
     it "still respects instance setters" do
       instance.dependency = :bar
       expect(instance.dependency).to eq(:bar)
+      expect(Klass.new.dependency).to eq(:foo)
+    end
+
+    it "still respects static setters in the overriden test_injected context only" do
+      instance.static_dependency = :bar
+      expect(instance.static_dependency).to eq(:bar)
+      expect(Klass.static_dependency).to eq(:bar)
+      expect(SubKlass.static_dependency).to eq(:bar)
+      expect(SubSubKlass.static_dependency).to eq(:bar)
     end
 
     it "errors if you inject a non static default into a static injection" do
@@ -193,6 +217,88 @@ describe "RSpec test helper #test_inject" do
       expect { Klass.test_inject(:dependency) }.to raise_error(ArgumentError)
       expect { Klass.test_inject { instance_double(Object) } }.to raise_error(ArgumentError)
       expect { Klass.test_inject(:bad_dependency) { 1 } }.to raise_error(ArgumentError)
+    end
+  end
+
+  context "double subclass" do
+    context "1" do
+      it "sets the dependency" do
+        calls = 0
+        Klass.test_inject(:dependency) { calls += 1; :baz }
+        expect(Klass.new.dependency).to eq(:baz)
+        subklass = SubKlass.new
+        expect(subklass.dependency).to eq(:baz)
+        expect(subklass.dependency).to eq(:baz)
+        expect(SubSubKlass.new.dependency).to eq(:baz)
+        expect(calls).to eq(3)
+      end
+    end
+
+    context "2" do
+      it "sets the dependency" do
+        calls = 0
+        SubKlass.test_inject(:dependency) { calls += 1; :baz }
+        expect(Klass.new.dependency).to eq(:dependency)
+        subklass = SubKlass.new
+        expect(subklass.dependency).to eq(:baz)
+        expect(subklass.dependency).to eq(:baz)
+        expect(SubSubKlass.new.dependency).to eq(:baz)
+        expect(calls).to eq(2)
+      end
+    end
+
+    context "3" do
+      it "sets the dependency" do
+        sub_klass_calls = 0
+        sub_sub_klass_calls = 0
+        SubKlass.test_inject(:dependency) { sub_klass_calls += 1; :bar }
+        SubSubKlass.test_inject(:dependency) { sub_sub_klass_calls += 1; :baz }
+        expect(Klass.new.dependency).to eq(:dependency)
+        subklass = SubKlass.new
+        expect(subklass.dependency).to eq(:bar)
+        expect(subklass.dependency).to eq(:bar)
+        expect(SubSubKlass.new.dependency).to eq(:baz)
+        expect(sub_klass_calls).to eq(1)
+        expect(sub_sub_klass_calls).to eq(1)
+      end
+    end
+  end
+
+  context "double subclass static" do
+    context "1" do
+      it "sets the dependency" do
+        calls = 0
+        Klass.test_inject(:static_dependency) { calls += 1; :baz }
+        expect(Klass.new.static_dependency).to eq(:baz)
+        expect(SubKlass.new.static_dependency).to eq(:baz)
+        expect(SubSubKlass.new.static_dependency).to eq(:baz)
+        expect(calls).to eq(1)
+      end
+    end
+
+    context "2" do
+      it "sets the dependency" do
+        calls = 0
+        SubKlass.test_inject(:static_dependency) { calls += 1; :baz }
+        expect(Klass.new.static_dependency).to eq(:static_dependency)
+        expect(SubKlass.new.static_dependency).to eq(:baz)
+        expect(SubSubKlass.new.static_dependency).to eq(:baz)
+        expect(calls).to eq(1)
+      end
+    end
+
+    context "3" do
+      it "sets the dependency" do
+        sub_klass_calls = 0
+        sub_sub_klass_calls = 0
+        SubKlass.test_inject(:static_dependency) { sub_klass_calls += 1; :bar }
+        SubSubKlass.test_inject(:static_dependency) { sub_sub_klass_calls += 1; :baz }
+        expect(Klass.new.static_dependency).to eq(:static_dependency)
+        expect(SubKlass.new.static_dependency).to eq(:bar)
+        expect(SubSubKlass.new.static_dependency).to eq(:baz)
+        expect(sub_klass_calls).to eq(1)
+        expect(sub_sub_klass_calls).to eq(1)
+      end
     end
   end
 end
