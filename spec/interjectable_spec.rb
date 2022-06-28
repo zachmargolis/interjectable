@@ -170,6 +170,17 @@ describe Interjectable do
           expect(subclass_instance.static_dependency).to eq(:some_other_value)
           expect(subclass.static_dependency).to eq(:some_other_value)
         end
+
+        it "does not error when lazily setting the dep from a subclass first" do
+          expect(subclass.static_dependency).to eq(:some_value)
+          expect(klass.static_dependency).to eq(:some_value)
+          expect(subclass.static_dependency).to eq(:some_value)
+        end
+
+        it "only defines the class variable on the injecting class" do
+          expect(subclass.static_dependency).to eq(:some_value)
+          expect(klass.class_variable_get(:@@static_dependency)).to eq(:some_value)
+        end
       end
     end
   end

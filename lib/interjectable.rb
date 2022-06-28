@@ -64,26 +64,28 @@ module Interjectable
         raise MethodAlreadyDefined, "#{dependency} is already defined"
       end
 
+      injecting_class = self
+
       cvar_name = :"@@#{dependency}"
       setter = :"#{dependency}="
 
       define_method(setter) do |value|
-        self.class.send(setter, value)
+        injecting_class.send(setter, value)
       end
 
       define_singleton_method(setter) do |value|
-        class_variable_set(cvar_name, value)
+        injecting_class.class_variable_set(cvar_name, value)
       end
 
       define_method(dependency) do
-        self.class.send(dependency)
+        injecting_class.send(dependency)
       end
 
       define_singleton_method(dependency) do
         if class_variable_defined?(cvar_name)
-          class_variable_get(cvar_name)
+          injecting_class.class_variable_get(cvar_name)
         else
-          class_variable_set(cvar_name, instance_eval(&default_block))
+          injecting_class.class_variable_set(cvar_name, instance_eval(&default_block))
         end
       end
     end
