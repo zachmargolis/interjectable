@@ -1,5 +1,31 @@
 # Change Log
 
+# v1.2.0
+
+- Ruby 3.x made it an error to override a class variable in a parent class. There was a bug with `inject_static` where
+  if a subclass was the first to call a static dependency, the class variable would only be set on that subclass (and
+  children of that subsclass). If the injecting class then called the static dependency, it would override the already
+  set child's class variable, which is now an error.
+
+  ```ruby
+  class Parent
+    include Interjectable
+    inject_static(:boom) { "goats" }
+  end
+
+  class Child < Parent; end
+
+  Child.boom # => sets Child's @@boom = "goats"
+  Parent.boom # => sets Parent's @@boom = "goats" and *clear* Child's @@boom.
+  Child.boom # => Error on Ruby 3.x because you are trying to read an overriden class variable.
+  ```
+    
+  Fix: always set the class variable on the class that called `inject_static`.
+
+# v1.1.3
+
+- Fix `test_inject` for sub-sub-classes.
+
 # v1.1.2
 
 - Fix visibility issue with `Module.define_method` for Ruby < 2.5.0.
