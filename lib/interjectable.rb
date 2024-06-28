@@ -5,12 +5,35 @@ require "interjectable/version"
 module Interjectable
   MethodAlreadyDefined = Class.new(StandardError)
 
+  INJECTED_METHODS = :injected_methods
+  INJECTED_METHODS_IVAR = :"@#{INJECTED_METHODS}"
+
   def self.included(mod)
     mod.send(:extend, ClassMethods)
+    set_inherited_injected_methods(mod)
   end
 
   def self.extended(mod)
     mod.send(:extend, ClassMethods)
+    set_inherited_injected_methods(mod)
+  end
+
+  private
+
+  # Defines both an instance and singleton helper method `injected_methods` to track injected dependencies.
+  #
+  # The `injected_methods` helper method:
+  # - does not differentiate between dependencies injected on instances vs. classes
+  # - passes injected methods from a superclass to its subclasses, but not vice versa
+  # - includes itself as one of the injected methods (i.e. :injected_methods will be present)
+  def self.set_inherited_injected_methods(mod)
+    mod.class_eval do
+      def self.inherited(subclass)
+        super
+        subclass.instance_variable_set(INJECTED_METHODS_IVAR,
+                                       instance_variable_get(INJECTED_METHODS_IVAR) || [INJECTED_METHODS])
+      end
+    end
   end
 
   module ClassMethods
@@ -41,6 +64,24 @@ module Interjectable
         else
           instance_variable_set(ivar_name, instance_eval(&default_block))
         end
+      end
+
+      setter = :"#{dependency}="
+      if instance_variable_defined?(INJECTED_METHODS_IVAR)
+        instance_variable_set(INJECTED_METHODS_IVAR,
+                              (instance_variable_get(INJECTED_METHODS_IVAR) + [dependency, setter]).uniq)
+      else
+        instance_variable_set(INJECTED_METHODS_IVAR, [INJECTED_METHODS, dependency, setter])
+      end
+
+      injecting_class = self
+
+      define_method(INJECTED_METHODS) do
+        injecting_class.instance_variable_get(INJECTED_METHODS_IVAR)
+      end
+
+      define_singleton_method(INJECTED_METHODS) do
+        injecting_class.instance_variable_get(INJECTED_METHODS_IVAR)
       end
     end
 
@@ -87,6 +128,21 @@ module Interjectable
         else
           injecting_class.class_variable_set(cvar_name, instance_eval(&default_block))
         end
+      end
+
+      if injecting_class.instance_variable_defined?(INJECTED_METHODS_IVAR)
+        injecting_class.instance_variable_set(INJECTED_METHODS_IVAR,
+          (injecting_class.instance_variable_get(INJECTED_METHODS_IVAR) + [dependency, setter]).uniq)
+      else
+        injecting_class.instance_variable_set(INJECTED_METHODS_IVAR, [INJECTED_METHODS, dependency, setter])
+      end
+
+      define_method(INJECTED_METHODS) do
+        injecting_class.instance_variable_get(INJECTED_METHODS_IVAR)
+      end
+
+      define_singleton_method(INJECTED_METHODS) do
+        injecting_class.instance_variable_get(INJECTED_METHODS_IVAR)
       end
     end
   end

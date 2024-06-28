@@ -12,7 +12,7 @@ gem 'interjectable'
 
 ## Usage
 
-Interjectable has one module (`Interjectable`) and two methods. Use them like so!
+Interjectable has one module (`Interjectable`) and two methods. It also includes both an instance and singleton helper method `injected_methods` to track what dependency methods have been created. Use them like so!
 
 ```ruby
 class MyClass
@@ -25,6 +25,11 @@ class MyClass
   # defines helper methods on instances that memoize values statically,
   # shared across all instances
   inject_static(:shared_value) { ENV["SOME_VALUE"] }
+
+  def do_something
+    injected_methods # => [:injected_methods, :dependency, :dependency=, :other_dependency, :other_dependency=, :shared_value, :shared_value=]
+    MyClass.injected_methods == injected_methods # => true
+  end
 end
 ```
 
@@ -39,7 +44,7 @@ class MyClass
     @dependency=dependency
   end
 
-  def other_depency
+  def other_dependency
     @other_dependency ||= AnotherClass.new
   end
 end

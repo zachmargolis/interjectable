@@ -1,5 +1,11 @@
 # Change Log
 
+# v1.3.0
+
+- Add an `injected_methods` instance and singleton helper method to track what dependency methods have been created.
+  This method includes itself in the list of injected methods and does not differentiate whether a dependency was added
+  using `inject` or `inject_static`.
+
 # v1.2.0
 
 - Ruby 3.x made it an error to override a class variable in a parent class. There was a bug with `inject_static` where
