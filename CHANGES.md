@@ -2,9 +2,9 @@
 
 # v1.3.0
 
-- Add an `injected_methods` instance and singleton helper method to track what dependency methods have been created.
-  This method includes itself in the list of injected methods and does not differentiate whether a dependency was added
-  using `inject` or `inject_static`.
+- Add an `injected_methods(include_super = true)` instance and singleton helper method to track what dependency methods
+  have been created. This method includes itself in the list of injected methods and does not differentiate
+  whether a dependency was added using `inject` or `inject_static`.
 
 # v1.2.0
 

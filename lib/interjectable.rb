@@ -5,35 +5,12 @@ require "interjectable/version"
 module Interjectable
   MethodAlreadyDefined = Class.new(StandardError)
 
-  INJECTED_METHODS = :injected_methods
-  INJECTED_METHODS_IVAR = :"@#{INJECTED_METHODS}"
-
   def self.included(mod)
     mod.send(:extend, ClassMethods)
-    set_inherited_injected_methods(mod)
   end
 
   def self.extended(mod)
     mod.send(:extend, ClassMethods)
-    set_inherited_injected_methods(mod)
-  end
-
-  private
-
-  # Defines both an instance and singleton helper method `injected_methods` to track injected dependencies.
-  #
-  # The `injected_methods` helper method:
-  # - does not differentiate between dependencies injected on instances vs. classes
-  # - passes injected methods from a superclass to its subclasses, but not vice versa
-  # - includes itself as one of the injected methods (i.e. :injected_methods will be present)
-  def self.set_inherited_injected_methods(mod)
-    mod.class_eval do
-      def self.inherited(subclass)
-        super
-        subclass.instance_variable_set(INJECTED_METHODS_IVAR,
-                                       instance_variable_get(INJECTED_METHODS_IVAR) || [INJECTED_METHODS])
-      end
-    end
   end
 
   module ClassMethods
@@ -50,6 +27,10 @@ module Interjectable
     #   def dependency
     #     @dependency ||= instance_eval(&default_block)
     #   end
+    #
+    # Also defines both an instance and singleton helper method `injected_methods(include_super = true)`,
+    # which tracks injected dependencies regardless of whether the dependency was injected on the instance or class.
+    # It includes itself as one of the injected methods (i.e. `injected_methods` will be present).
     def inject(dependency, &default_block)
       if instance_methods(false).include?(dependency)
         raise MethodAlreadyDefined, "#{dependency} is already defined"
@@ -66,22 +47,32 @@ module Interjectable
         end
       end
 
+      injected_methods = :injected_methods
+      injected_methods_ivar = :"@#{injected_methods}"
       setter = :"#{dependency}="
-      if instance_variable_defined?(INJECTED_METHODS_IVAR)
-        instance_variable_set(INJECTED_METHODS_IVAR,
-                              (instance_variable_get(INJECTED_METHODS_IVAR) + [dependency, setter]).uniq)
-      else
-        instance_variable_set(INJECTED_METHODS_IVAR, [INJECTED_METHODS, dependency, setter])
+
+      unless instance_variable_defined?(injected_methods_ivar)
+        instance_variable_set(injected_methods_ivar, [injected_methods])
       end
+      instance_variable_get(injected_methods_ivar).append(dependency, setter)
 
       injecting_class = self
 
-      define_method(INJECTED_METHODS) do
-        injecting_class.instance_variable_get(INJECTED_METHODS_IVAR)
+      define_method(injected_methods) do |include_super = true|
+        injecting_class.send(injected_methods, include_super)
       end
 
-      define_singleton_method(INJECTED_METHODS) do
-        injecting_class.instance_variable_get(INJECTED_METHODS_IVAR)
+      define_singleton_method(injected_methods) do |include_super = true|
+        unless injecting_class.instance_variable_defined?(injected_methods_ivar)
+          injecting_class.instance_variable_set(injected_methods_ivar, [injected_methods])
+        end
+
+        if include_super && injecting_class.superclass.respond_to?(injected_methods)
+          return [*injecting_class.instance_variable_get(injected_methods_ivar),
+                  *injecting_class.superclass.send(injected_methods, include_super)].uniq
+        end
+
+        injecting_class.instance_variable_get(injected_methods_ivar)
       end
     end
 
@@ -100,6 +91,10 @@ module Interjectable
     #   def dependency
     #     @@dependency ||= instance_eval(&default_block)
     #   end
+    #
+    # Also defines both an instance and singleton helper method `injected_methods(include_super = true)`,
+    # which tracks injected dependencies regardless of whether the dependency was injected on the instance or class.
+    # It includes itself as one of the injected methods (i.e. `injected_methods` will be present).
     def inject_static(dependency, &default_block)
       if instance_methods(false).include?(dependency) || methods(false).include?(dependency)
         raise MethodAlreadyDefined, "#{dependency} is already defined"
@@ -130,19 +125,29 @@ module Interjectable
         end
       end
 
-      if injecting_class.instance_variable_defined?(INJECTED_METHODS_IVAR)
-        injecting_class.instance_variable_set(INJECTED_METHODS_IVAR,
-          (injecting_class.instance_variable_get(INJECTED_METHODS_IVAR) + [dependency, setter]).uniq)
-      else
-        injecting_class.instance_variable_set(INJECTED_METHODS_IVAR, [INJECTED_METHODS, dependency, setter])
+      injected_methods = :injected_methods
+      injected_methods_ivar = :"@#{injected_methods}"
+
+      unless injecting_class.instance_variable_defined?(injected_methods_ivar)
+        injecting_class.instance_variable_set(injected_methods_ivar, [injected_methods])
+      end
+      injecting_class.instance_variable_get(injected_methods_ivar).append(dependency, setter)
+
+      define_method(injected_methods) do |include_super = true|
+        injecting_class.send(injected_methods, include_super)
       end
 
-      define_method(INJECTED_METHODS) do
-        injecting_class.instance_variable_get(INJECTED_METHODS_IVAR)
-      end
+      define_singleton_method(injected_methods) do |include_super = true|
+        unless injecting_class.instance_variable_defined?(injected_methods_ivar)
+          injecting_class.instance_variable_set(injected_methods_ivar, [injected_methods])
+        end
 
-      define_singleton_method(INJECTED_METHODS) do
-        injecting_class.instance_variable_get(INJECTED_METHODS_IVAR)
+        if include_super && injecting_class.superclass.respond_to?(injected_methods)
+          return [*injecting_class.instance_variable_get(injected_methods_ivar),
+                  *injecting_class.superclass.send(injected_methods, include_super)].uniq
+        end
+
+        injecting_class.instance_variable_get(injected_methods_ivar)
       end
     end
   end
