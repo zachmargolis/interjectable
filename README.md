@@ -12,7 +12,8 @@ gem 'interjectable'
 
 ## Usage
 
-Interjectable has one module (`Interjectable`) and two methods. It also includes both an instance and singleton helper method `injected_methods(include_super = true)` to track what dependency methods have been created. Use them like so!
+Interjectable has one module (`Interjectable`) and two main methods for defining dependencies,
+`inject` and `inject_static`. Use them like so!
 
 ```ruby
 class MyClass
@@ -25,21 +26,17 @@ class MyClass
   # defines helper methods on instances that memoize values statically,
   # shared across all instances
   inject_static(:shared_value) { ENV["SOME_VALUE"] }
-
-  def do_something
-    injected_methods # => [:injected_methods, :dependency, :dependency=, :other_dependency, :other_dependency=, :shared_value, :shared_value=]
-    MyClass.injected_methods == injected_methods # => true
-  end
 end
+```
 
-class MySubClass < MyClass
-  inject(:sub_dependency) { SubClass.new }
+It also includes introspection method `injected_methods(include_super = true)` (both instance and class-level)
+to track what dependency methods have been created.
 
-  def do_something
-    injected_methods # => [:injected_methods, :dependency, :dependency=, :other_dependency, :other_dependency=, :shared_value, :shared_value=, :sub_dependency, :sub_dependency=]
-    injected_methods(false) # => [:injected_methods, :sub_dependency, :sub_dependency=]
-  end
-end
+```ruby
+MyClass.injected_methods
+# => [:injected_methods, :dependency, :dependency=, :other_dependency, :other_dependency=,
+MyClass.new.injected_methods
+# => [:injected_methods, :dependency, :dependency=, :other_dependency, :other_dependency=,
 ```
 
 This replaces a pattern we've used before, adding default dependencies in the constructor, or as memoized methods.
