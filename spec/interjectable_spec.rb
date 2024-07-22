@@ -6,19 +6,6 @@ describe Interjectable do
   shared_examples_for "an interjectable class" do
     let(:instance) { klass.new }
 
-    def expect_injected_methods(injecting_class, class_instance, include_super, *getter_methods)
-      expect(injecting_class.injected_methods(include_super))
-        .to match_array(class_instance.injected_methods(include_super))
-
-      setter_methods = getter_methods.map { |m| :"#{m}=" }
-      expected_methods = getter_methods + setter_methods + [:injected_methods]
-      if include_super && injecting_class.superclass.respond_to?(:injected_methods)
-        expected_methods.append(*injecting_class.superclass.injected_methods(include_super)).uniq!
-      end
-
-      expect(injecting_class.injected_methods(include_super)).to match_array(expected_methods)
-    end
-
     describe "#inject" do
       before do
         klass.inject(:some_dependency) { :service }
@@ -31,16 +18,12 @@ describe Interjectable do
       it "adds an instance method getter and setter" do
         instance.some_dependency = 'aaa'
         expect(instance.some_dependency).to eq('aaa')
-
-        # expect_injected_methods(klass, instance, true, :some_dependency)
       end
 
       it "lazy-loads the default block" do
         expect(instance.instance_variable_get("@some_dependency")).to be_nil
         expect(instance.some_dependency).to eq(:service)
         expect(instance.instance_variable_get("@some_dependency")).not_to be_nil
-
-        # expect_injected_methods(klass, instance, true, :some_dependency)
       end
 
       it "allows transitive dependencies (via instance_eval)" do
@@ -48,7 +31,6 @@ describe Interjectable do
         klass.inject(:second_dependency) { :value }
 
         expect(instance.first_dependency).to eq(:value)
-        # expect_injected_methods(klass, instance, true, :some_dependency, :first_dependency, :second_dependency)
       end
 
       it "calls dependency block once, even with a falsy value" do
@@ -57,8 +39,6 @@ describe Interjectable do
 
         2.times { expect(instance.some_falsy_dependency).to be_nil }
         expect(count).to eq(1)
-
-        # expect_injected_methods(klass, instance, true, :some_dependency, :some_falsy_dependency)
       end
 
       it "errors when injecting the same dependency multiple times" do
@@ -80,8 +60,6 @@ describe Interjectable do
         klass.inject(:good_dependency) { foo }
         instance.foo = 2
         expect(instance.good_dependency).to eq(2)
-
-        # expect_injected_methods(klass, instance, true, :some_dependency, :good_dependency)
       end
 
       context "with a dependency on another class" do
@@ -95,7 +73,6 @@ describe Interjectable do
           instance.some_other_class = :fake_other_class
 
           expect(instance.some_other_class).to eq(:fake_other_class)
-          # expect_injected_methods(klass, instance, true, :some_dependency, :some_other_class)
         end
       end
 
@@ -106,21 +83,12 @@ describe Interjectable do
         it "does not error if the method exists on the superclass" do
           subclass.inject(:some_dependency) { :some_other_value }
           expect(subclass_instance.some_dependency).to eq(:some_other_value)
-
-          # expect_injected_methods(klass, instance, true, :some_dependency)
-          # expect_injected_methods(subclass, subclass_instance, true, :some_dependency)
         end
 
         it "allows injection on the subclass without injecting on the superclass" do
           subclass.inject(:subclass_dependency) { :brand_new_value }
           expect(subclass_instance.subclass_dependency).to eq(:brand_new_value)
           expect { instance.subclass_dependency }.to raise_error(NoMethodError)
-
-          # expect_injected_methods(klass, instance, true, :some_dependency)
-          # expect_injected_methods(klass, instance, false, :some_dependency)
-
-          # expect_injected_methods(subclass, subclass_instance, true, :some_dependency, :subclass_dependency)
-          # expect_injected_methods(subclass, subclass_instance, false, :subclass_dependency)
         end
 
         context "with a chain of subclasses" do
@@ -130,16 +98,6 @@ describe Interjectable do
           it "retrieves injected methods from all ancestors when requested" do
             subclass.inject(:subclass_dependency) { :subclass_value }
             lower_subclass.inject(:lower_subclass_dependency) { :lower_subclass_value }
-
-            # expect_injected_methods(klass, instance, true, :some_dependency)
-            # expect_injected_methods(klass, instance, false, :some_dependency)
-
-            # expect_injected_methods(subclass, subclass_instance, true, :some_dependency, :subclass_dependency)
-            # expect_injected_methods(subclass, subclass_instance, false, :subclass_dependency)
-
-            # expect_injected_methods(lower_subclass, lower_subclass_instance, true,
-            #                         :some_dependency, :subclass_dependency, :lower_subclass_dependency)
-            # expect_injected_methods(lower_subclass, lower_subclass_instance, false, :lower_subclass_dependency)
           end
         end
       end
@@ -159,26 +117,17 @@ describe Interjectable do
       it "adds an instance method and setter" do
         instance.static_dependency = 'aaa'
         expect(instance.static_dependency).to eq('aaa')
-
-        # expect_injected_methods(klass, instance, true, :static_dependency)
-        # expect_injected_methods(klass, other_instance, true, :static_dependency)
       end
 
       it "adds a class method and setter" do
         klass.static_dependency = 'aaa'
         expect(klass.static_dependency).to eq('aaa')
-
-        # expect_injected_methods(klass, instance, true, :static_dependency)
-        # expect_injected_methods(klass, other_instance, true, :static_dependency)
       end
 
       it "shares a value across all instances of a class" do
         instance.static_dependency = 'bbb'
         expect(other_instance.static_dependency).to eq('bbb')
         expect(klass.static_dependency).to eq('bbb')
-
-        # expect_injected_methods(klass, instance, true, :static_dependency)
-        # expect_injected_methods(klass, other_instance, true, :static_dependency)
       end
 
       it "calls its dependency block once across all instances" do
@@ -190,9 +139,6 @@ describe Interjectable do
         expect(klass.falsy_static_dependency).to be_nil
 
         expect(count).to eq(1)
-
-        # expect_injected_methods(klass, instance, true, :static_dependency, :falsy_static_dependency)
-        # expect_injected_methods(klass, other_instance, true, :static_dependency, :falsy_static_dependency)
       end
 
       it "errors when inject_static-ing a dependency multiple times" do
@@ -233,39 +179,23 @@ describe Interjectable do
           instance.static_dependency = 'ccc'
           expect(subclass_instance.static_dependency).to eq('ccc')
           expect(subclass.static_dependency).to eq('ccc')
-
-          # expect_injected_methods(klass, instance, true, :static_dependency)
-          # expect_injected_methods(klass, other_instance, true, :static_dependency)
-          # expect_injected_methods(subclass, subclass_instance, true, :static_dependency)
         end
 
         it "does not error if the method exists on the super klass" do
           subclass.inject_static(:static_dependency) { :some_other_value }
           expect(subclass_instance.static_dependency).to eq(:some_other_value)
           expect(subclass.static_dependency).to eq(:some_other_value)
-
-          # expect_injected_methods(klass, instance, true, :static_dependency)
-          # expect_injected_methods(klass, other_instance, true, :static_dependency)
-          # expect_injected_methods(subclass, subclass_instance, true, :static_dependency)
         end
 
         it "does not error when lazily setting the dep from a subclass first" do
           expect(subclass.static_dependency).to eq(:some_value)
           expect(klass.static_dependency).to eq(:some_value)
           expect(subclass.static_dependency).to eq(:some_value)
-
-          # expect_injected_methods(klass, instance, true, :static_dependency)
-          # expect_injected_methods(klass, other_instance, true, :static_dependency)
-          # expect_injected_methods(subclass, subclass_instance, true, :static_dependency)
         end
 
         it "only defines the class variable on the injecting class" do
           expect(subclass.static_dependency).to eq(:some_value)
           expect(klass.class_variable_get(:@@static_dependency)).to eq(:some_value)
-
-          # expect_injected_methods(klass, instance, true, :static_dependency)
-          # expect_injected_methods(klass, other_instance, true, :static_dependency)
-          # expect_injected_methods(subclass, subclass_instance, true, :static_dependency)
         end
 
         it "allows injection on the subclass without injecting on the superclass" do
@@ -273,12 +203,6 @@ describe Interjectable do
           expect(subclass_instance.static_subclass_dependency).to eq(:brand_new_value)
           expect { klass.static_subclass_dependency }.to raise_error(NoMethodError)
           expect { instance.static_subclass_dependency }.to raise_error(NoMethodError)
-
-          # expect_injected_methods(klass, instance, true, :static_dependency)
-          # expect_injected_methods(klass, instance, false, :static_dependency)
-
-          # expect_injected_methods(subclass, subclass_instance, true, :static_dependency, :static_subclass_dependency)
-          # expect_injected_methods(subclass, subclass_instance, false, :static_subclass_dependency)
         end
 
         context "with a chain of subclasses" do
@@ -288,16 +212,6 @@ describe Interjectable do
           it "retrieves injected methods from all ancestors when requested" do
             subclass.inject_static(:static_subclass_dependency) { :subclass_value }
             lower_subclass.inject_static(:static_lower_subclass_dependency) { :lower_subclass_value }
-
-            # expect_injected_methods(klass, instance, true, :static_dependency)
-            # expect_injected_methods(klass, instance, false, :static_dependency)
-
-            # expect_injected_methods(subclass, subclass_instance, true, :static_dependency, :static_subclass_dependency)
-            # expect_injected_methods(subclass, subclass_instance, false, :static_subclass_dependency)
-
-            # expect_injected_methods(lower_subclass, lower_subclass_instance, true,
-            #                         :static_dependency, :static_subclass_dependency, :static_lower_subclass_dependency)
-            # expect_injected_methods(lower_subclass, lower_subclass_instance, false, :static_lower_subclass_dependency)
           end
         end
       end
@@ -309,12 +223,16 @@ describe Interjectable do
         klass.inject_static(:b) { :b }
       end
 
-      it "lists injected methods on the instance" do
-        expect(instance.injected_methods).to match_array(
+      it "lists injected methods on the instance but not the class" do
+        injected_methods = instance.injected_methods
+
+        expect(injected_methods).to match_array(
           [
-            :injected_methods, :a, :a=, :b, :b=,
+            :injected_methods, :a, :a=,
           ],
         )
+        expect(injected_methods).to_not include(:b)
+        expect(injected_methods).to_not include(:b=)
       end
 
       context "with a subclass" do
@@ -327,17 +245,19 @@ describe Interjectable do
         let(:subclass_instance) { subclass.new }
 
         it "includes super methods by default" do
-          expect(subclass_instance.injected_methods(include_super)).to match_array(
+          injected_methods = subclass_instance.injected_methods(include_super)
+
+          expect(injected_methods).to match_array(
             [
               :injected_methods,
               :a,
               :a=,
-              :b,
-              :b=,
               :c,
               :c=,
             ],
           )
+          expect(injected_methods).to_not include(:b)
+          expect(injected_methods).to_not include(:b=)
         end
 
         context "with include_super = false" do
@@ -369,7 +289,7 @@ describe Interjectable do
         klass.inject_static(:b) { :b }
       end
 
-      it "lists injected methods on the instance" do
+      it "lists injected methods on the instance and class" do
         expect(klass.injected_methods).to match_array(
           [
             :injected_methods, :a, :a=, :b, :b=,
@@ -420,9 +340,6 @@ describe Interjectable do
           end
         end
       end
-    end
-
-    describe ".static_injected_methods" do
     end
   end
 

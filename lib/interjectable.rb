@@ -17,7 +17,21 @@ module Interjectable
 
   module InstanceMethods
     def injected_methods(include_super = true)
-      self.class.injected_methods(include_super)
+      injected = self.class.instance_variable_get(:@injected_methods).to_a
+
+      if include_super
+        super_injected = self.class.ancestors.flat_map do |klass|
+          klass.instance_variable_get(:@injected_methods).to_a
+        end
+
+        [
+          :injected_methods,
+          *super_injected,
+          *injected,
+        ].uniq
+      else
+        [:injected_methods, *injected]
+      end
     end
   end
 
@@ -100,17 +114,18 @@ module Interjectable
         end
       end
 
-      @injected_methods ||= []
-      @injected_methods += [dependency, :"#{dependency}="]
+      @static_injected_methods ||= []
+      @static_injected_methods += [dependency, :"#{dependency}="]
     end
 
     # @return [Array<Symbol>]
     def injected_methods(include_super = true)
-      injected = @injected_methods.to_a
+      injected = @injected_methods.to_a + @static_injected_methods.to_a
 
       if include_super
         super_injected = ancestors.flat_map do |klass|
-          klass.instance_variable_get(:@injected_methods).to_a
+          klass.instance_variable_get(:@injected_methods).to_a +
+            klass.instance_variable_get(:@static_injected_methods).to_a
         end
 
         [
