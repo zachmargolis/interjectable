@@ -17,11 +17,13 @@ module Interjectable
 
   module InstanceMethods
     def injected_methods(include_super = true)
-      injected = self.class.instance_variable_get(:@injected_methods).to_a
+      injected = self.class.instance_variable_get(:@injected_methods).to_a +
+        self.class.instance_variable_get(:@static_injected_methods).to_a
 
       if include_super
         super_injected = self.class.ancestors.flat_map do |klass|
-          klass.instance_variable_get(:@injected_methods).to_a
+          klass.instance_variable_get(:@injected_methods).to_a +
+            klass.instance_variable_get(:@static_injected_methods).to_a
         end
 
         [
@@ -120,12 +122,11 @@ module Interjectable
 
     # @return [Array<Symbol>]
     def injected_methods(include_super = true)
-      injected = @injected_methods.to_a + @static_injected_methods.to_a
+      injected = @static_injected_methods.to_a
 
       if include_super
         super_injected = ancestors.flat_map do |klass|
-          klass.instance_variable_get(:@injected_methods).to_a +
-            klass.instance_variable_get(:@static_injected_methods).to_a
+          klass.instance_variable_get(:@static_injected_methods).to_a
         end
 
         [

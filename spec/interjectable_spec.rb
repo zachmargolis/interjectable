@@ -223,16 +223,14 @@ describe Interjectable do
         klass.inject_static(:b) { :b }
       end
 
-      it "lists injected methods on the instance but not the class" do
+      it "lists injected methods on the instance and static ones too" do
         injected_methods = instance.injected_methods
 
         expect(injected_methods).to match_array(
           [
-            :injected_methods, :a, :a=,
+            :injected_methods, :a, :a=, :b, :b=,
           ],
         )
-        expect(injected_methods).to_not include(:b)
-        expect(injected_methods).to_not include(:b=)
       end
 
       context "with a subclass" do
@@ -252,12 +250,12 @@ describe Interjectable do
               :injected_methods,
               :a,
               :a=,
+              :b,
+              :b=,
               :c,
               :c=,
             ],
           )
-          expect(injected_methods).to_not include(:b)
-          expect(injected_methods).to_not include(:b=)
         end
 
         context "with include_super = false" do
@@ -289,34 +287,43 @@ describe Interjectable do
         klass.inject_static(:b) { :b }
       end
 
-      it "lists injected methods on the instance and class" do
-        expect(klass.injected_methods).to match_array(
+      it "lists static injected methods class" do
+        injected_methods = klass.injected_methods
+
+        expect(injected_methods).to match_array(
           [
-            :injected_methods, :a, :a=, :b, :b=,
+            :injected_methods, :b, :b=,
           ],
         )
+        expect(injected_methods).to_not include(:a)
+        expect(injected_methods).to_not include(:a=)
       end
 
       context "with a subclass" do
         let(:subclass) do
           Class.new(klass) do
             inject(:c) { :c }
+            inject_static(:d) { :d }
           end
         end
         let(:include_super) { true }
 
         it "includes super methods by default" do
-          expect(subclass.injected_methods(include_super)).to match_array(
+          injected_methods = subclass.injected_methods(include_super)
+
+          expect(injected_methods).to match_array(
             [
               :injected_methods,
-              :a,
-              :a=,
               :b,
               :b=,
-              :c,
-              :c=
+              :d,
+              :d=
             ],
           )
+          expect(injected_methods).to_not include(:a), 'skips instance methods'
+          expect(injected_methods).to_not include(:a=), 'skips instance methods'
+          expect(injected_methods).to_not include(:c), 'skips instance methods'
+          expect(injected_methods).to_not include(:c=), 'skips instance methods'
         end
 
         context "with include_super = false" do
@@ -325,16 +332,18 @@ describe Interjectable do
           it "does not include super methods" do
             injected_methods = subclass.injected_methods(include_super)
 
-            expect(injected_methods).to_not include(:a)
-            expect(injected_methods).to_not include(:a=)
-            expect(injected_methods).to_not include(:b)
-            expect(injected_methods).to_not include(:b=)
+            expect(injected_methods).to_not include(:a), 'skips instance methods'
+            expect(injected_methods).to_not include(:a=), 'skips instance methods'
+            expect(injected_methods).to_not include(:b), 'skips super methods'
+            expect(injected_methods).to_not include(:b=), 'skips super methods'
+            expect(injected_methods).to_not include(:c), 'skips instance methods'
+            expect(injected_methods).to_not include(:c=), 'skips instance methods'
 
             expect(injected_methods).to match_array(
               [
                 :injected_methods,
-                :c,
-                :c=,
+                :d,
+                :d=,
               ],
             )
           end
