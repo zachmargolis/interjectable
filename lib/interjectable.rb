@@ -7,10 +7,34 @@ module Interjectable
 
   def self.included(mod)
     mod.send(:extend, ClassMethods)
+    mod.send(:include, InstanceMethods)
   end
 
   def self.extended(mod)
     mod.send(:extend, ClassMethods)
+    mod.send(:include, InstanceMethods)
+  end
+
+  module InstanceMethods
+    def injected_methods(include_super = true)
+      injected = self.class.instance_variable_get(:@injected_methods).to_a +
+        self.class.instance_variable_get(:@static_injected_methods).to_a
+
+      if include_super
+        super_injected = self.class.ancestors.flat_map do |klass|
+          klass.instance_variable_get(:@injected_methods).to_a +
+            klass.instance_variable_get(:@static_injected_methods).to_a
+        end
+
+        [
+          :injected_methods,
+          *super_injected,
+          *injected,
+        ].uniq
+      else
+        [:injected_methods, *injected]
+      end
+    end
   end
 
   module ClassMethods
@@ -27,10 +51,6 @@ module Interjectable
     #   def dependency
     #     @dependency ||= instance_eval(&default_block)
     #   end
-    #
-    # Also defines both an instance and singleton helper method `injected_methods(include_super = true)`,
-    # which tracks injected dependencies regardless of whether the dependency was injected on the instance or class.
-    # It includes itself as one of the injected methods (i.e. `injected_methods` will be present).
     def inject(dependency, &default_block)
       if instance_methods(false).include?(dependency)
         raise MethodAlreadyDefined, "#{dependency} is already defined"
@@ -47,33 +67,8 @@ module Interjectable
         end
       end
 
-      injected_methods = :injected_methods
-      injected_methods_ivar = :"@#{injected_methods}"
-      setter = :"#{dependency}="
-
-      unless instance_variable_defined?(injected_methods_ivar)
-        instance_variable_set(injected_methods_ivar, [injected_methods])
-      end
-      instance_variable_get(injected_methods_ivar).append(dependency, setter)
-
-      injecting_class = self
-
-      define_method(injected_methods) do |include_super = true|
-        injecting_class.send(injected_methods, include_super)
-      end
-
-      define_singleton_method(injected_methods) do |include_super = true|
-        unless injecting_class.instance_variable_defined?(injected_methods_ivar)
-          injecting_class.instance_variable_set(injected_methods_ivar, [injected_methods])
-        end
-
-        if include_super && injecting_class.superclass.respond_to?(injected_methods)
-          return [*injecting_class.instance_variable_get(injected_methods_ivar),
-                  *injecting_class.superclass.send(injected_methods, include_super)].uniq
-        end
-
-        injecting_class.instance_variable_get(injected_methods_ivar)
-      end
+      @injected_methods ||= []
+      @injected_methods += [dependency, :"#{dependency}="]
     end
 
     # Defines helper methods on instances that memoize values per-class.
@@ -91,10 +86,6 @@ module Interjectable
     #   def dependency
     #     @@dependency ||= instance_eval(&default_block)
     #   end
-    #
-    # Also defines both an instance and singleton helper method `injected_methods(include_super = true)`,
-    # which tracks injected dependencies regardless of whether the dependency was injected on the instance or class.
-    # It includes itself as one of the injected methods (i.e. `injected_methods` will be present).
     def inject_static(dependency, &default_block)
       if instance_methods(false).include?(dependency) || methods(false).include?(dependency)
         raise MethodAlreadyDefined, "#{dependency} is already defined"
@@ -125,29 +116,26 @@ module Interjectable
         end
       end
 
-      injected_methods = :injected_methods
-      injected_methods_ivar = :"@#{injected_methods}"
+      @static_injected_methods ||= []
+      @static_injected_methods += [dependency, :"#{dependency}="]
+    end
 
-      unless injecting_class.instance_variable_defined?(injected_methods_ivar)
-        injecting_class.instance_variable_set(injected_methods_ivar, [injected_methods])
-      end
-      injecting_class.instance_variable_get(injected_methods_ivar).append(dependency, setter)
+    # @return [Array<Symbol>]
+    def injected_methods(include_super = true)
+      injected = @static_injected_methods.to_a
 
-      define_method(injected_methods) do |include_super = true|
-        injecting_class.send(injected_methods, include_super)
-      end
-
-      define_singleton_method(injected_methods) do |include_super = true|
-        unless injecting_class.instance_variable_defined?(injected_methods_ivar)
-          injecting_class.instance_variable_set(injected_methods_ivar, [injected_methods])
+      if include_super
+        super_injected = ancestors.flat_map do |klass|
+          klass.instance_variable_get(:@static_injected_methods).to_a
         end
 
-        if include_super && injecting_class.superclass.respond_to?(injected_methods)
-          return [*injecting_class.instance_variable_get(injected_methods_ivar),
-                  *injecting_class.superclass.send(injected_methods, include_super)].uniq
-        end
-
-        injecting_class.instance_variable_get(injected_methods_ivar)
+        [
+          :injected_methods,
+          *super_injected,
+          *injected,
+        ].uniq
+      else
+        [:injected_methods, *injected]
       end
     end
   end
