@@ -81,8 +81,24 @@ describe Interjectable do
         let(:subclass_instance) { subclass.new }
 
         it "does not error if the method exists on the superclass" do
-          subclass.inject(:dependency) { :some_other_value }
-          expect(subclass_instance.dependency).to eq(:some_other_value)
+          subclass.inject(:some_dependency) { :some_other_value }
+          expect(subclass_instance.some_dependency).to eq(:some_other_value)
+        end
+
+        it "allows injection on the subclass without injecting on the superclass" do
+          subclass.inject(:subclass_dependency) { :brand_new_value }
+          expect(subclass_instance.subclass_dependency).to eq(:brand_new_value)
+          expect { instance.subclass_dependency }.to raise_error(NoMethodError)
+        end
+
+        context "with a chain of subclasses" do
+          let(:lower_subclass) { Class.new(subclass) }
+          let(:lower_subclass_instance) { lower_subclass.new }
+
+          it "retrieves injected methods from all ancestors when requested" do
+            subclass.inject(:subclass_dependency) { :subclass_value }
+            lower_subclass.inject(:lower_subclass_dependency) { :lower_subclass_value }
+          end
         end
       end
     end
@@ -180,6 +196,157 @@ describe Interjectable do
         it "only defines the class variable on the injecting class" do
           expect(subclass.static_dependency).to eq(:some_value)
           expect(klass.class_variable_get(:@@static_dependency)).to eq(:some_value)
+        end
+
+        it "allows injection on the subclass without injecting on the superclass" do
+          subclass.inject_static(:static_subclass_dependency) { :brand_new_value }
+          expect(subclass_instance.static_subclass_dependency).to eq(:brand_new_value)
+          expect { klass.static_subclass_dependency }.to raise_error(NoMethodError)
+          expect { instance.static_subclass_dependency }.to raise_error(NoMethodError)
+        end
+
+        context "with a chain of subclasses" do
+          let(:lower_subclass) { Class.new(subclass) }
+          let(:lower_subclass_instance) { lower_subclass.new }
+
+          it "retrieves injected methods from all ancestors when requested" do
+            subclass.inject_static(:static_subclass_dependency) { :subclass_value }
+            lower_subclass.inject_static(:static_lower_subclass_dependency) { :lower_subclass_value }
+          end
+        end
+      end
+    end
+
+    describe "#injected_methods" do
+      before do
+        klass.inject(:a) { :a }
+        klass.inject_static(:b) { :b }
+      end
+
+      it "lists injected methods on the instance and static ones too" do
+        injected_methods = instance.injected_methods
+
+        expect(injected_methods).to match_array(
+          [
+            :injected_methods, :a, :a=, :b, :b=,
+          ],
+        )
+      end
+
+      context "with a subclass" do
+        let(:subclass) do
+          Class.new(klass) do
+            inject(:c) { :c }
+          end
+        end
+        let(:include_super) { true }
+        let(:subclass_instance) { subclass.new }
+
+        it "includes super methods by default" do
+          injected_methods = subclass_instance.injected_methods(include_super)
+
+          expect(injected_methods).to match_array(
+            [
+              :injected_methods,
+              :a,
+              :a=,
+              :b,
+              :b=,
+              :c,
+              :c=,
+            ],
+          )
+        end
+
+        context "with include_super = false" do
+          let(:include_super) { false }
+
+          it "does not include super methods" do
+            injected_methods = subclass_instance.injected_methods(include_super)
+
+            expect(injected_methods).to_not include(:a)
+            expect(injected_methods).to_not include(:a=)
+            expect(injected_methods).to_not include(:b)
+            expect(injected_methods).to_not include(:b=)
+
+            expect(injected_methods).to match_array(
+              [
+                :injected_methods,
+                :c,
+                :c=,
+              ],
+            )
+          end
+        end
+      end
+    end
+
+    describe ".injected_methods" do
+      before do
+        klass.inject(:a) { :a }
+        klass.inject_static(:b) { :b }
+      end
+
+      it "lists static injected methods class" do
+        injected_methods = klass.injected_methods
+
+        expect(injected_methods).to match_array(
+          [
+            :injected_methods, :b, :b=,
+          ],
+        )
+        expect(injected_methods).to_not include(:a)
+        expect(injected_methods).to_not include(:a=)
+      end
+
+      context "with a subclass" do
+        let(:subclass) do
+          Class.new(klass) do
+            inject(:c) { :c }
+            inject_static(:d) { :d }
+          end
+        end
+        let(:include_super) { true }
+
+        it "includes super methods by default" do
+          injected_methods = subclass.injected_methods(include_super)
+
+          expect(injected_methods).to match_array(
+            [
+              :injected_methods,
+              :b,
+              :b=,
+              :d,
+              :d=
+            ],
+          )
+          expect(injected_methods).to_not include(:a), 'skips instance methods'
+          expect(injected_methods).to_not include(:a=), 'skips instance methods'
+          expect(injected_methods).to_not include(:c), 'skips instance methods'
+          expect(injected_methods).to_not include(:c=), 'skips instance methods'
+        end
+
+        context "with include_super = false" do
+          let(:include_super) { false }
+
+          it "does not include super methods" do
+            injected_methods = subclass.injected_methods(include_super)
+
+            expect(injected_methods).to_not include(:a), 'skips instance methods'
+            expect(injected_methods).to_not include(:a=), 'skips instance methods'
+            expect(injected_methods).to_not include(:b), 'skips super methods'
+            expect(injected_methods).to_not include(:b=), 'skips super methods'
+            expect(injected_methods).to_not include(:c), 'skips instance methods'
+            expect(injected_methods).to_not include(:c=), 'skips instance methods'
+
+            expect(injected_methods).to match_array(
+              [
+                :injected_methods,
+                :d,
+                :d=,
+              ],
+            )
+          end
         end
       end
     end

@@ -7,10 +7,34 @@ module Interjectable
 
   def self.included(mod)
     mod.send(:extend, ClassMethods)
+    mod.send(:include, InstanceMethods)
   end
 
   def self.extended(mod)
     mod.send(:extend, ClassMethods)
+    mod.send(:include, InstanceMethods)
+  end
+
+  module InstanceMethods
+    def injected_methods(include_super = true)
+      injected = self.class.instance_variable_get(:@injected_methods).to_a +
+        self.class.instance_variable_get(:@static_injected_methods).to_a
+
+      if include_super
+        super_injected = self.class.ancestors.flat_map do |klass|
+          klass.instance_variable_get(:@injected_methods).to_a +
+            klass.instance_variable_get(:@static_injected_methods).to_a
+        end
+
+        [
+          :injected_methods,
+          *super_injected,
+          *injected,
+        ].uniq
+      else
+        [:injected_methods, *injected]
+      end
+    end
   end
 
   module ClassMethods
@@ -42,6 +66,9 @@ module Interjectable
           instance_variable_set(ivar_name, instance_eval(&default_block))
         end
       end
+
+      @injected_methods ||= []
+      @injected_methods += [dependency, :"#{dependency}="]
     end
 
     # Defines helper methods on instances that memoize values per-class.
@@ -87,6 +114,28 @@ module Interjectable
         else
           injecting_class.class_variable_set(cvar_name, instance_eval(&default_block))
         end
+      end
+
+      @static_injected_methods ||= []
+      @static_injected_methods += [dependency, :"#{dependency}="]
+    end
+
+    # @return [Array<Symbol>]
+    def injected_methods(include_super = true)
+      injected = @static_injected_methods.to_a
+
+      if include_super
+        super_injected = ancestors.flat_map do |klass|
+          klass.instance_variable_get(:@static_injected_methods).to_a
+        end
+
+        [
+          :injected_methods,
+          *super_injected,
+          *injected,
+        ].uniq
+      else
+        [:injected_methods, *injected]
       end
     end
   end

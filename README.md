@@ -12,7 +12,8 @@ gem 'interjectable'
 
 ## Usage
 
-Interjectable has one module (`Interjectable`) and two methods. Use them like so!
+Interjectable has one module (`Interjectable`) and two main methods for defining dependencies,
+`inject` and `inject_static`. Use them like so!
 
 ```ruby
 class MyClass
@@ -28,6 +29,16 @@ class MyClass
 end
 ```
 
+It also includes introspection method `injected_methods(include_super = true)` (both instance and class-level)
+to track what dependency methods have been created.
+
+```ruby
+MyClass.injected_methods
+# => [:injected_methods, :shared_value, :shared_value=]
+MyClass.new.injected_methods
+# => [:injected_methods, :dependency, :dependency=, :other_dependency, :other_dependency=, :shared_value, :shared_value=]
+```
+
 This replaces a pattern we've used before, adding default dependencies in the constructor, or as memoized methods.
 
 ```ruby
@@ -39,7 +50,7 @@ class MyClass
     @dependency=dependency
   end
 
-  def other_depency
+  def other_dependency
     @other_dependency ||= AnotherClass.new
   end
 end
