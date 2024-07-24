@@ -34,9 +34,9 @@ to track what dependency methods have been created.
 
 ```ruby
 MyClass.injected_methods
-# => [:injected_methods, :dependency, :dependency=, :other_dependency, :other_dependency=,
+# => [:injected_methods, :shared_value, :shared_value=]
 MyClass.new.injected_methods
-# => [:injected_methods, :dependency, :dependency=, :other_dependency, :other_dependency=,
+# => [:injected_methods, :dependency, :dependency=, :other_dependency, :other_dependency=, :shared_value, :shared_value=]
 ```
 
 This replaces a pattern we've used before, adding default dependencies in the constructor, or as memoized methods.
